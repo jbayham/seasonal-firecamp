@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+*.Rproj
+
+#Custom ignores
+cache/*
+inputs/*
+outputs/*
