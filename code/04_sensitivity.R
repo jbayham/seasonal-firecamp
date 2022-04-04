@@ -10,6 +10,7 @@ library(stringr)
 library(purrr)
 library(tidyr)
 library(furrr)
+library(data.table)
 # setwd("path/to/seasonal_Rproject")
 
 # Load Helper functions ----
@@ -94,41 +95,39 @@ single_sim <- function(run_num, parms) {
 #### Running simulations (in parallel) ####
 #parm_set=parm_list[[1]]
 plan(multisession(workers = 18))
-sens_result <- map(parm_list,function(parm_set){
+map(parm_list,function(parm_set){
   suppressWarnings(future_map(c(1:nruns),~single_sim(.,parm_set),.progress = T,.options=furrr_options(seed=T)))
+  return(invisible(NULL))
 })
   
-results <- dir("cache/2017/baseline/",full.names = T) %>%
-  map_dfr(read_csv)
+results <- dir("cache/2017",full.names = T,recursive = T) %>%
+  map_dfr(fread)
 
 
-plot_cum_inf(results)
+#Plotting cumulative infections
+#Off fire infection
+results %>%
+  filter(scenario %in% c("baseline","High Off-Fire Infection","Low Off-Fire Infection")) %>%
+  #mutate(scenario = ifelse(scenario=="baseline","Baseline",scenario)) %>%
+  mutate(scenario = case_when(
+    scenario == "baseline" ~ "Baseline\n(42/100k)",
+    scenario == "High Off-Fire Infection" ~ "High Compliance\n(21/100k)",
+    scenario == "Low Off-Fire Infection" ~ "Low Compliance\n(84/100k)"
+  )) %>%
+  plot_cum_inf_sensitivity()
 
-#### Running simulation with parallel ####
-# This section is for running the simulations in parallel.
-# Remember `type = FORK` only works in linux, omit the `type` option
-# if you are on windows
+ggsave("outputs/figs/sensitivity_outside_inf.png",width = 7,height = 4,units = "in")
 
-# cl <- makeCluster(num_cores) # creating the cluster
-# clusterExport(cl, varlist = c("seed0", "working_directory"))
-# clusterEvalQ(cl, {
-#   library(covidfireMASS)
-#   library(dplyr)
-#   library(readr)
-#   library(stringr)
-#   # setwd(working_directory)
-# })
-# 
-# try({
-#   parSapply(cl, 1:nruns, single_sim, parms = base_parms_2017)
-# }, silent = FALSE)
-# 
-# try({
-#   parSapply(cl, 1:nruns, single_sim, parms = low_parms_2017)
-# }, silent = FALSE)
-# 
-# try({
-#   parSapply(cl, 1:nruns, single_sim, parms = high_parms_2017)
-# }, silent = FALSE)
-# 
-# stopCluster(cl)
+#Off fire infection
+results %>%
+  filter(scenario %in% c("baseline","High Self-Isolation","Low Self-Isolation")) %>%
+  #mutate(scenario = ifelse(scenario=="baseline","Baseline",scenario)) %>%
+  mutate(scenario = case_when(
+    scenario == "baseline" ~ "Baseline\n(50%)",
+    scenario == "High Self-Isolation" ~ "High Compliance\n(70%)",
+    scenario == "Low Self-Isolation" ~ "Low Compliance\n(30%)"
+  )) %>%
+  plot_cum_inf_sensitivity()
+
+ggsave("outputs/figs/sensitivity_self_iso.png",width = 7,height = 4,units = "in")
+
