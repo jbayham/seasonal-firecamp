@@ -32,6 +32,7 @@ base_parms_2017 <- list("scenario" = "baseline",
                         "inc_info" = inc_info_2017,
                         "vax_df"   = vax_plan_base_2017,
                         "overhead_ids" = overhead_ids_2017,
+                        "module_multiplier" = 4,
                         "BI"  = 0.13,
                         "eir" = 0.00042,
                         "pIQ" = 0.5)
@@ -52,10 +53,21 @@ high_parms_2017_pIQ <- base_parms_2017
 high_parms_2017_pIQ$scenario = "High Self-Isolation"
 high_parms_2017_pIQ$pIQ = 0.7
 
+#pIQ - prob symptomatic does not quarantine
+low_parms_2017_mm <- base_parms_2017
+low_parms_2017_mm$scenario = "Low Module Multiplier"
+low_parms_2017_mm$module_multiplier = 2
+high_parms_2017_mm <- base_parms_2017
+high_parms_2017_mm$scenario = "High Module Multiplier"
+high_parms_2017_mm$module_multiplier = 6
+
+
+
 #Maybe mess with vax plan??? (modify in 00_make_sim_inputs)
 
 
-parm_list <- list(base_parms_2017,low_parms_2017_eir,high_parms_2017_eir,low_parms_2017_pIQ,high_parms_2017_pIQ)
+#parm_list <- list(base_parms_2017,low_parms_2017_eir,high_parms_2017_eir,low_parms_2017_pIQ,high_parms_2017_pIQ)
+parm_list <- list(base_parms_2017,low_parms_2017_mm,high_parms_2017_mm)
 
 #### Single simulation function ####
 # This function will try to write directories to place results if they don't already exist
@@ -66,7 +78,7 @@ single_sim <- function(run_num, parms) {
                       mod_data = parms[["mod_data"]],
                       inc_info = parms[["inc_info"]],
                       overhead_ids = parms[["overhead_ids"]],
-                      module_multiplier = 4,
+                      module_multiplier = parms[["module_multiplier"]],
                       leads  = 4,
                       BI     = parms[["BI"]],
                       eir    = parms[["eir"]],
@@ -118,7 +130,7 @@ results %>%
 
 ggsave("outputs/figs/sensitivity_outside_inf.png",width = 7,height = 4,units = "in")
 
-#Off fire infection
+#self-isolation
 results %>%
   filter(scenario %in% c("baseline","High Self-Isolation","Low Self-Isolation")) %>%
   #mutate(scenario = ifelse(scenario=="baseline","Baseline",scenario)) %>%
@@ -131,3 +143,15 @@ results %>%
 
 ggsave("outputs/figs/sensitivity_self_iso.png",width = 7,height = 4,units = "in")
 
+#module multiplier
+results %>%
+  filter(scenario %in% c("baseline","High Module Multiplier","Low Module Multiplier")) %>%
+  #mutate(scenario = ifelse(scenario=="baseline","Baseline",scenario)) %>%
+  mutate(scenario = case_when(
+    scenario == "baseline" ~ "Baseline\n(4)",
+    scenario == "High Module Multiplier" ~ "Low Compliance\n(6)",
+    scenario == "Low Module Multiplier" ~ "High Compliance\n(2)"
+  )) %>%
+  plot_cum_inf_sensitivity()
+
+ggsave("outputs/figs/sensitivity_mod_mult.png",width = 7,height = 4,units = "in")
